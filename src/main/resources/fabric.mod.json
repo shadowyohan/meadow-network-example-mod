@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "meadow-network",
+  "version": "${version}",
+  "name": "meadow-network",
+  "description": "Meadow Network Example Mod",
+  "authors": [],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "icon": "assets/meadow-network/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-datagen": [
+      "im.shadowyohan.meadow.best.client.MeadowNetworkDataGenerator"
+    ],
+    "client": [
+      "im.shadowyohan.meadow.best.client.MeadowNetworkClient"
+    ],
+    "main": [
+      "im.shadowyohan.meadow.best.MeadowNetwork"
+    ]
+  },
+  "mixins": [
+    "meadow-network.mixins.json",
+    {
+      "config": "meadow-network.client.mixins.json",
+      "environment": "client"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}"
+  }
+}
