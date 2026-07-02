@@ -8,4 +8,6 @@ public final class NetUser {
     public String clientName;
     public String clientSlug;
     public String clientLogo;
+    // true - заявка в друзья уже отправлена (только для результатов /users/search)
+    public boolean requestSent;
 }

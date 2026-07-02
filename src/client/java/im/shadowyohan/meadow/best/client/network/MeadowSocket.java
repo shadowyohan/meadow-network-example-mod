@@ -23,25 +23,44 @@ public final class MeadowSocket {
     private final Supplier<String> urlSupplier;
     private final Consumer<JsonObject> handler;
     private final Consumer<Boolean> onConnectedChanged;
+    // код закрытия последнего onClose/onError (0 если закрыли сами, к примеру stop()) -
+    // нужен наверху чтобы отличить бан (4003) от обрыва связи
+    private final CloseListener onClosed;
 
     private final AtomicBoolean active = new AtomicBoolean(false);
     private volatile WebSocket socket;
     private volatile boolean connected;
     private int retries;
 
+    public interface CloseListener {
+        void onClosed(int code, String reason);
+    }
+
     public MeadowSocket(String name, HttpClient http, ScheduledExecutorService scheduler,
                         Supplier<String> urlSupplier, Consumer<JsonObject> handler,
                         Consumer<Boolean> onConnectedChanged) {
+        this(name, http, scheduler, urlSupplier, handler, onConnectedChanged, null);
+    }
+
+    public MeadowSocket(String name, HttpClient http, ScheduledExecutorService scheduler,
+                        Supplier<String> urlSupplier, Consumer<JsonObject> handler,
+                        Consumer<Boolean> onConnectedChanged, CloseListener onClosed) {
         this.name = name;
         this.http = http;
         this.scheduler = scheduler;
         this.urlSupplier = urlSupplier;
         this.handler = handler;
         this.onConnectedChanged = onConnectedChanged;
+        this.onClosed = onClosed;
     }
 
     public boolean isConnected() {
         return connected;
+    }
+
+    /** окончательно перестал пытаться (исчерпал ретраи/забанен/вытеснен/остановлен) и не подключён. */
+    public boolean isGivenUp() {
+        return !active.get() && !connected;
     }
 
     public void start() {
@@ -140,7 +159,20 @@ public final class MeadowSocket {
         public CompletionStage<?> onClose(WebSocket webSocket, int statusCode, String reason) {
             System.out.println("[meadow-net] " + name + " closed: " + statusCode + " " + reason);
             socket = null;
-            scheduleReconnect();
+            if (onClosed != null) onClosed.onClosed(statusCode, reason);
+            if (statusCode == 4003) {
+                // бан/форбидден - не реконнектим сами, наверху решают что делать
+                active.set(false);
+                setConnected(false);
+            } else if (statusCode == 4000) {
+                // "Replaced by new connection" - бэк держит один чат-слот на юзера сразу на
+                // /ws/chat и /ws/clientchat, так что нас вытеснил другой наш же сокет.
+                // слепой реконнект тут же вытеснит его обратно - вечный пинг-понг, не реконнектим
+                active.set(false);
+                setConnected(false);
+            } else {
+                scheduleReconnect();
+            }
             return null;
         }
 

@@ -20,9 +20,17 @@ public final class Conversation {
     // только CHANNEL: онлайн в канале (-1 пока неизвестно), приходит из ws user_joined/user_left
     public volatile int onlineCount = -1;
     public volatile boolean historyLoaded;
+    // есть ли ещё более старые сообщения на сервере (пагинация через before_id)
+    public volatile boolean hasMoreHistory = true;
+    // страница подгрузки истории уже в полёте - не дублируем запрос
+    public volatile boolean loadingMore;
 
     // старые -> новые, синхронизация по самому списку
     public final Deque<Message> messages = new ArrayDeque<>();
+
+    // локально отправленные, ещё не подтверждённые сервером сообщения (FIFO) -
+    // ждём своё же эхо (op:"message"/"dm_sent"), чтобы дозаполнить id/timestamp без дублей
+    public final Deque<Message> pendingSent = new ArrayDeque<>();
 
     private Conversation(Type type, String channel, int userId, String title) {
         this.type = type;
@@ -55,6 +63,25 @@ public final class Conversation {
             messages.addLast(message);
             while (messages.size() > 200) {
                 messages.removeFirst();
+            }
+        }
+    }
+
+    /** довешивает более старую страницу истории (before_id) спереди. без лимита на 200 - юзер явно долистал сюда сам. */
+    public void addOlderMessages(java.util.List<Message> older) {
+        synchronized (messages) {
+            for (int i = older.size() - 1; i >= 0; i--) {
+                Message m = older.get(i);
+                boolean dup = false;
+                if (m.id > 0) {
+                    for (Message existing : messages) {
+                        if (existing.id == m.id) {
+                            dup = true;
+                            break;
+                        }
+                    }
+                }
+                if (!dup) messages.addFirst(m);
             }
         }
     }

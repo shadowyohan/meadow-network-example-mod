@@ -62,6 +62,12 @@ public final class AvatarRenderer {
             0xFF6CFFAA, 0xFFFFC46C, 0xFFE46CFF,
     };
 
+    // сбрасывает кэш аватарок - дёргается при (пере)подключении к сети, чтобы не тащить
+    // чужие/устаревшие аватарки между аккаунтами. кэш картинок сообщений (ImageCache) сюда не входит
+    public static void clearCache() {
+        CACHE.clear();
+    }
+
     // квадратный аватар по url, иначе буква fallbackName (пустое имя - не рисуем вообще)
     public static void draw(DrawContext ctx, String url, String fallbackName, int x, int y, int size) {
         Identifier tex = resolve(url);
