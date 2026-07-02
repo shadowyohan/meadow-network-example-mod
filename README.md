@@ -1,5 +1,5 @@
 # meadow-network - Example-Mod
-> Version: Beta 1.0.0
+> Version: Pre-release 1.1.0
 
 Example-mod для разработчиков модов сети **meadow!network**. Содержит **всю логику чата**
 (авторизация, общий чат, личные сообщения, друзья, presence) на голом Fabric 1.21.4
